@@ -6,4 +6,7 @@ class Hello{
     {
         return 'hello world!';
     }
+    public function update(){
+        // 测试update
+    }
 }
