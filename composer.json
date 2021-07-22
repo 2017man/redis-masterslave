@@ -1,0 +1,15 @@
+{
+    "name": "man/redis-masterslave",
+    "autoload": {
+        "psr-4": {
+            "Man\\RedisMasterslave\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "man",
+            "email": "3398284534@qq.com"
+        }
+    ],
+    "require": {}
+}
