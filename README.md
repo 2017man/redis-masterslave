@@ -1,2 +1,2 @@
 # redis-masterslave
-redis主从应用
+redis主从应用实例
