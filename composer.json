@@ -1,8 +1,8 @@
 {
-    "name": "man/redis-masterslave",
+    "name": "manson/redis-masterslave",
     "autoload": {
         "psr-4": {
-            "Man\\RedisMasterslave\\": "src/"
+            "Manson\\RedisMasterslave\\": "src/"
         }
     },
     "authors": [
@@ -11,5 +11,6 @@
             "email": "3398284534@qq.com"
         }
     ],
+    "minimum-stability": "dev",
     "require": {}
 }

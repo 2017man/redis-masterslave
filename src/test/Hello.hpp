@@ -1,5 +1,5 @@
 <?php
-namespace Man\RedisMasterslave\Test;
+namespace Manson\RedisMasterslave\Test;
 class Hello{
     
     public function world()
