@@ -9,4 +9,5 @@ class Hello{
     public function update(){
         // 测试update
     }
+    
 }
