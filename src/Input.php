@@ -17,6 +17,6 @@ class Input
         } else {
             var_dump($message);
         }
-        echo  "======>>> " . $description . " end\n";
+        echo "======>>> " . $description . " end\n";
     }
 }
