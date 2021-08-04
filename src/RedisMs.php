@@ -16,6 +16,14 @@ class RedisMs
      */
     const MAX_OFFSET = 100;
 
+    /**
+     * 支持的操作命令
+     */
+    protected $command = [
+        'write' => ['set'],
+        'read'  => ['get']
+    ];
+
     public function __construct($config)
     {
         $this->config = $config;
@@ -64,6 +72,20 @@ class RedisMs
     }
 
     /**
+     * 通过负载均衡获取子节点
+     * @return mixed
+     */
+    public function getOneSlave()
+    {
+        /**
+         * 随机版本
+         */
+        $connSlaveIndexs = $this->connSlaveIndexs;
+        $oneSlaveIndex   = rand(0, count($connSlaveIndexs));
+        return $this->connections['slaves'][$connSlaveIndexs[$oneSlaveIndex]];
+    }
+
+    /**
      * 服务标识
      * @param $slave
      * @return string
@@ -102,29 +124,31 @@ class RedisMs
          */
         $masterRedis = $this->connections['master'];
         $masterRept  = $masterRedis->info('replication');
-        $slaves      = [];
-        for ($i = 0; $i < $masterRept['connected_slaves']; $i++) {
-            $slaveInfo  = $this->strToArr($masterRept['slave' . $i]);
-            $slave      = ['host' => $slaveInfo['ip'], 'port' => $slaveInfo['port']];
-            $serverFlag = $this->serverFlag($slave);
-
-            // 动态新增延迟范围内的从节点
-            if ($masterRept['master_repl_offset'] - $slaveInfo['offset'] < self::MAX_OFFSET) {
-                // 是正常范围
-                // 如果之前因为网络延迟删除了节点，现在恢复了网络 -》新增
-                if (!in_array($serverFlag, $this->connSlaveIndexs)) {
-                    $slaves[] = $slave;
-                }
-                Input::info($slaves, '新增从节点');
-            } else {
-                // 动态剔除延迟搞的节点
-                if (isset($this->connections['slaves'][$serverFlag])) {
-                    unset($this->connections['slaves'][$serverFlag]);
-                    Input::info($serverFlag, '剔除从节点');
+        Input::info($masterRept, '主节点replication');
+        swoole_timer_tick(2000, function ($timer_id) use ($masterRept) {
+            $slaves = [];
+            for ($i = 0; $i < $masterRept['connected_slaves']; $i++) {
+                $slaveInfo  = $this->strToArr($masterRept['slave' . $i]);
+                $slave      = ['host' => $slaveInfo['ip'], 'port' => $slaveInfo['port']];
+                $serverFlag = $this->serverFlag($slave);
+                // 动态新增延迟范围内的从节点
+                if ($masterRept['master_repl_offset'] - $slaveInfo['offset'] < self::MAX_OFFSET) {
+                    // 是正常范围
+                    // 如果之前因为网络延迟删除了节点，现在恢复了网络 -》新增
+                    if (!in_array($serverFlag, $this->connSlaveIndexs)) {
+                        $slaves[] = $slave;
+                    }
+                    Input::info($slaves, '新增从节点');
+                } else {
+                    // 动态剔除延迟搞的节点
+                    if (isset($this->connections['slaves'][$serverFlag])) {
+                        unset($this->connections['slaves'][$serverFlag]);
+                        Input::info($serverFlag, '剔除从节点');
+                    }
                 }
             }
-        }
-        $this->connections['slaves'] = $this->createSlaves($slaves);
+            $this->connections['slaves'] = $this->createSlaves($slaves);
+        });
     }
 
     protected function strToArr($str = '', $flag1 = ',', $flag2 = '=')
@@ -134,13 +158,36 @@ class RedisMs
          */
         $ret = [];
         foreach (explode($flag1, $str) as $item) {
-            foreach ($item as $value) {
-                $value          = explode($flag2, $value);
-                $ret[$value[0]] = $value[1];
-            }
+            $value          = explode($flag2, $item);
+            $ret[$value[0]] = $value[1];
         }
         return $ret;
+    }
 
+    public function exec($command, $params = [])
+    {
+        try {
+            // 获取操作对象
+            $redis = $this->getExecRedis($command);
+            return $redis->{$command}(...$params);
+        } catch (\Exception $e) {
+            var_dump([
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
+            ]);
+        }
+    }
+
+    protected function getExecRedis($command)
+    {
+        if (in_array($command, $this->command['write'])) {
+            return $this->connections['master'];
+        } elseif (in_array($command, $this->command['read'])) {
+            return $this->getOneSlave();
+        } else {
+            throw new \Exception('该命令暂不支持！');
+        }
     }
 
 }
