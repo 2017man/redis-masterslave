@@ -64,6 +64,9 @@ class RedisMs
      */
     public function createSlaves($slaves)
     {
+        if (empty($slaves)) {
+            return;
+        }
         foreach ($slaves as $slave) {
             $this->connections['slaves'][$this->serverFlag($slave)] = $this->getRedis($slave['host'], $slave['port']);
         }
@@ -81,7 +84,7 @@ class RedisMs
          * 随机版本
          */
         $connSlaveIndexs = $this->connSlaveIndexs;
-        $oneSlaveIndex   = rand(0, count($connSlaveIndexs));
+        $oneSlaveIndex   = rand(0, count($connSlaveIndexs) - 1);
         return $this->connections['slaves'][$connSlaveIndexs[$oneSlaveIndex]];
     }
 
@@ -125,7 +128,8 @@ class RedisMs
         $masterRedis = $this->connections['master'];
         $masterRept  = $masterRedis->info('replication');
         Input::info($masterRept, '主节点replication');
-        swoole_timer_tick(2000, function ($timer_id) use ($masterRept) {
+        $k = 1;
+        swoole_timer_tick(2000, function ($timer_id) use ($masterRept, $k) {
             $slaves = [];
             for ($i = 0; $i < $masterRept['connected_slaves']; $i++) {
                 $slaveInfo  = $this->strToArr($masterRept['slave' . $i]);
@@ -138,16 +142,18 @@ class RedisMs
                     if (!in_array($serverFlag, $this->connSlaveIndexs)) {
                         $slaves[] = $slave;
                     }
-                    Input::info($slaves, '新增从节点');
+                    Input::info($slaves, '新增从节点' . $k);
                 } else {
                     // 动态剔除延迟搞的节点
                     if (isset($this->connections['slaves'][$serverFlag])) {
                         unset($this->connections['slaves'][$serverFlag]);
-                        Input::info($serverFlag, '剔除从节点');
+                        Input::info($serverFlag, '剔除从节点' . $k);
                     }
                 }
             }
+            Input::info($this->connSlaveIndexs, '从--服务器--index--前');
             $this->connections['slaves'] = $this->createSlaves($slaves);
+            Input::info($this->connSlaveIndexs, '从--服务器--index--后');
         });
     }
 
@@ -186,7 +192,7 @@ class RedisMs
         } elseif (in_array($command, $this->command['read'])) {
             return $this->getOneSlave();
         } else {
-            throw new \Exception('该命令暂不支持！');
+            throw new \Exception('该命令暂不支持！' . $command);
         }
     }
 
