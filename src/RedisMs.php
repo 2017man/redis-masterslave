@@ -170,6 +170,12 @@ class RedisMs
         return $ret;
     }
 
+    /**
+     * 执行命令
+     * @param $command
+     * @param array $params
+     * @return mixed
+     */
     public function exec($command, $params = [])
     {
         try {
@@ -185,6 +191,12 @@ class RedisMs
         }
     }
 
+    /**
+     * 读写分离
+     * @param $command
+     * @return mixed
+     * @throws \Exception
+     */
     protected function getExecRedis($command)
     {
         if (in_array($command, $this->command['write'])) {
