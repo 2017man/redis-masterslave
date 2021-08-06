@@ -152,7 +152,7 @@ class RedisMs
                 }
             }
             Input::info($this->connSlaveIndexs, '从--服务器--index--前');
-            $this->connections['slaves'] = $this->createSlaves($slaves);
+            $this->createSlaves($slaves);
             Input::info($this->connSlaveIndexs, '从--服务器--index--后');
         });
     }

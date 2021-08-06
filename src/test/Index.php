@@ -22,16 +22,20 @@ $http->on('workerStart', function ($server, $worker_id) use ($config) {
 // 通过浏览器访问 http://本机ip ：9501会执行的代码
 $http->on('request', function ($request, $response) {
     global $redisMS;
-    $params  = $request->get['params'];
-    $command = '';
-    if ($request->get['method']) {
-        $command = $request->get['method'];
-    }
+    $get     = $request->get;
+    $params  = $get['params'] ?? [];
+    $command = $get['method'] ?? '';
     if ($params) {
         $params = explode(',', $params);
+    } else {
+        $response->end('参数缺失');
     }
-    Input::info(['commond' => $command, 'parames' => $params], '请求参数');
+    if ($command) {
+        $response->end('命令缺失');
+    }
+    Input::info(['commond' => $command, 'params' => $params], '请求参数');
     $ret = $redisMS->exec($command, $params);
+    Input::info($ret, '返回结果');
     $response->end($ret);
 });
 
